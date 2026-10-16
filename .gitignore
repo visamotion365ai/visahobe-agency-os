@@ -1,0 +1,21 @@
+node_modules
+dist
+data
+.env
+.env.local
+*.log
+.DS_Store
+coverage
+storage
+
+# workspace/agent artefacts
+.bcode/
+uploads/
+*.zip
+AGENTS.md
+MEMORY.md
+.promote-manifest.json
+.restore-marker
+.uploads-manifest.json
+api/index.mjs
+*.tsbuildinfo
