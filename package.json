@@ -1,0 +1,26 @@
+{
+  "name": "visahobe",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "npm run build -w @visahobe/shared && npm run build -w @visahobe/server && npm run build -w @visahobe/web && npm run build -w @visahobe/browser-worker",
+    "test": "npm run test -w @visahobe/server && npm run test -w @visahobe/web",
+    "test:server": "npm run test -w @visahobe/server",
+    "test:web": "npm run test -w @visahobe/web",
+    "typecheck": "tsc -p apps/server/tsconfig.json --noEmit && tsc -p apps/browser-worker/tsconfig.json --noEmit && tsc -b apps/web",
+    "icons": "node scripts/generate-icons.mjs",
+    "icons:py": "python3 scripts/generate-icons.py",
+    "build:vercel": "node scripts/build-vercel.mjs",
+    "test-site": "node scripts/test-site.mjs",
+    "ui-check": "node scripts/ui-check.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
