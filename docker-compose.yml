@@ -1,0 +1,90 @@
+# VisaHOBe Agency OS — self-hosted stack.
+#
+#   docker compose up -d --build            # core: api + web + browser worker
+#   docker compose --profile postgres up -d  # add PostgreSQL
+#   docker compose --profile ollama up -d    # add a local Ollama runtime
+#
+# Copy .env.example to .env and set the secrets before starting.
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    restart: unless-stopped
+    env_file: [.env]
+    environment:
+      NODE_ENV: production
+      PORT: 8787
+      HOST: 0.0.0.0
+      DATABASE_URL: ${DATABASE_URL:-}
+      DB_FILE: /app/apps/server/data/visahobe.db
+      STORAGE_DIR: /app/apps/server/data/storage
+      WORKER_URL: ${WORKER_URL:-ws://worker:8790/api/browser/worker}
+    volumes:
+      - visahobe-data:/app/apps/server/data
+    expose:
+      - '8787'
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:8787/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+    restart: unless-stopped
+    ports:
+      - '${WEB_PORT:-8080}:80'
+    depends_on:
+      api:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+    restart: unless-stopped
+    env_file: [.env]
+    environment:
+      WORKER_URL: ${WORKER_URL:-ws://api:8787/api/browser/worker}
+      WORKER_TOKEN: ${WORKER_TOKEN}
+      WORKER_LABEL: ${WORKER_LABEL:-docker-worker}
+      PREVIEW_INTERVAL_MS: ${PREVIEW_INTERVAL_MS:-1000}
+      SCREENSHOT_QUALITY: ${SCREENSHOT_QUALITY:-70}
+    depends_on:
+      api:
+        condition: service_healthy
+    # The worker needs more shared memory than the default 64 MB.
+    shm_size: '1gb'
+
+  postgres:
+    profiles: [postgres]
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-visahobe}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: ${POSTGRES_DB:-visahobe}
+    volumes:
+      - visahobe-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-visahobe}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  ollama:
+    profiles: [ollama]
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - visahobe-ollama:/root/.ollama
+    ports:
+      - '${OLLAMA_PORT:-11434}:11434'
+
+volumes:
+  visahobe-data:
+  visahobe-pg:
+  visahobe-ollama:
